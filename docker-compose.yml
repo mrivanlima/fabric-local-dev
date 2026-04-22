@@ -1,0 +1,160 @@
+version: '3.8'
+
+# This file orchestrates all our containers: SQL Server, Spark, and Jupyter
+# Each service is a container that can communicate with others via the network
+
+services:
+  # SQL Server Developer Edition - Primary instance (data source and target)
+  # This is the same SQL Server that Fabric uses under the hood
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2025-latest
+    container_name: fabric-sqlserver
+    environment:
+      # REQUIRED: Accept the SQL Server license
+      ACCEPT_EULA: "Y"
+      # Set the SA (admin) password - CHANGE THIS IN PRODUCTION!
+      SA_PASSWORD: "YourStrong@Passw0rd"
+      # Enable SQL Server Agent for job scheduling
+      MSSQL_AGENT_ENABLED: "true"
+    ports:
+      # Map SQL Server port to your local machine
+      # localhost:1433 will connect to SQL Server in the container
+      - "1433:1433"
+    volumes:
+      # Persist database files so data survives container restarts
+      - sqlserver-data:/var/opt/mssql
+      # Mount initialization scripts
+      - ./docker/sql:/docker-entrypoint-initdb.d
+    networks:
+      - fabric-network
+    healthcheck:
+      # Check if SQL Server is ready to accept connections
+      test: /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "YourStrong@Passw0rd" -Q "SELECT 1" || exit 1
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  # SQL Server Developer Edition - Secondary instance (for testing data movement)
+  # Useful for simulating source → target scenarios
+  sqlserver2:
+    image: mcr.microsoft.com/mssql/server:2025-latest
+    container_name: fabric-sqlserver2
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: "YourStrong@Passw0rd"
+      MSSQL_AGENT_ENABLED: "true"
+    ports:
+      # Different port to avoid conflict with first instance
+      # localhost:1434 will connect to this second SQL Server instance
+      - "1434:1433"
+    volumes:
+      # Separate volume for second instance data
+      - sqlserver2-data:/var/opt/mssql
+    networks:
+      - fabric-network
+    healthcheck:
+      test: /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "YourStrong@Passw0rd" -Q "SELECT 1" || exit 1
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  # Spark Master - Orchestrates Spark jobs (like Fabric's Spark engine)
+  spark-master:
+    build:
+      context: ./docker/spark
+      dockerfile: Dockerfile
+    container_name: fabric-spark-master
+    environment:
+      # Tell this container to run as Spark master
+      - SPARK_MODE=master
+      - SPARK_MASTER_HOST=spark-master
+      - SPARK_MASTER_PORT=7077
+    ports:
+      # Spark Master Web UI - view running jobs
+      - "8080:8080"
+      # Spark Master communication port
+      - "7077:7077"
+    volumes:
+      # Mount your notebooks and data into the container
+      - ./notebooks:/opt/notebooks
+      - ./data:/opt/data
+      - ./scripts:/opt/scripts
+    networks:
+      - fabric-network
+
+  # Spark Worker - Executes Spark tasks
+  # You can scale this to multiple workers for parallel processing
+  spark-worker:
+    build:
+      context: ./docker/spark
+      dockerfile: Dockerfile
+    container_name: fabric-spark-worker
+    environment:
+      # Tell this container to run as Spark worker
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      # Allocate resources to this worker
+      - SPARK_WORKER_MEMORY=2G
+      - SPARK_WORKER_CORES=2
+    depends_on:
+      - spark-master
+    volumes:
+      - ./notebooks:/opt/notebooks
+      - ./data:/opt/data
+      - ./scripts:/opt/scripts
+    netqlserver2:
+        condition: service_healthy
+      sworks:
+      - fabric-network
+
+  # Jupyter Notebook - Your interactive development environment
+  # This is where you'll write and test PySpark code
+  jupyter:
+    build:
+      context: ./docker/spark
+      dockerfile: Dockerfile
+    container_name: fabric-jupyter
+    command: jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token='' --NotebookApp.password=''
+    environment:
+      # Configure Jupyter to connect to Spark master
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      # SQL Server connection strings for PySpark
+      - SQL_SERVER_HOST=sqlserver
+      - SQL_SERVER_PORT=1433
+      - SQL_SERVER_USER=sa
+      - SQL_SERVER_PASSWORD=YourStrong@Passw0rd
+      - SQL_SERVER2_HOST=sqlserver2
+      - SQL_SERVER2_PORT=1433
+      - SQL_SERVER2_USER=sa
+      - SQL_SERVER2_PASSWORD=YourStrong@Passw0rd
+    ports:
+      # Jupyter Lab interface - open http://localhost:8888
+      - "8888:8888"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      spark-master:
+        condition: service_started
+    volumes:
+      # Your work is saved on your local machine, not in container
+      - ./notebooks:/opt/notebooks
+      - ./data:/opt/data
+      - ./scripts:/opt/scripts
+    working_dir: /opt/notebooks
+    networks:
+      - fabrics for SQL Server data persistence
+volumes:
+  sqlserver-data:
+    driver: local
+  sqlserver2ume for SQL Server data persistence
+volumes:
+  sqlserver-data:
+    driver: local
+
+# Network so all containers can communicate
+# They can reference each other by service name (e.g., 'sqlserver', 'spark-master')
+networks:
+  fabric-network:
+    driver: bridge

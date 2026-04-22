@@ -1,0 +1,35 @@
+# Core Data Processing
+pyspark==3.5.0              # Apache Spark Python API - same engine Fabric uses
+pandas==2.1.4                # Data manipulation and analysis
+numpy==1.26.2                # Numerical computing
+
+# Jupyter & Interactive Development
+jupyterlab==4.0.9            # Interactive notebook interface
+ipython==8.18.1              # Enhanced Python shell
+ipywidgets==8.1.1            # Interactive widgets for notebooks
+
+# Database Connectivity
+pyodbc==5.0.1                # SQL Server ODBC driver
+pymssql==2.2.11              # Python SQL Server connector
+sqlalchemy==2.0.23           # SQL toolkit and ORM
+
+# Data Visualization
+matplotlib==3.8.2            # Plotting library
+seaborn==0.13.0              # Statistical visualization
+plotly==5.18.0               # Interactive plots
+
+# Data Format Support
+openpyxl==3.1.2              # Excel files
+xlrd==2.0.1                  # Legacy Excel support
+fastparquet==2023.10.1       # Parquet file format (columnar storage)
+pyarrow==14.0.1              # Arrow format (fast data interchange)
+
+# Utilities
+python-dotenv==1.0.0         # Environment variable management
+requests==2.31.0             # HTTP library
+black==23.12.1               # Code formatter
+pytest==7.4.3                # Testing framework
+
+# Azure SDK (for eventual Fabric connectivity)
+azure-identity==1.15.0       # Azure authentication
+azure-storage-blob==12.19.0  # Azure Blob Storage

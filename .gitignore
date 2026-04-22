@@ -1,0 +1,101 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# VS Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/extensions.json
+
+# Docker
+docker-compose.override.yml
+.dockerignore
+
+# Data files (exclude large datasets, keep samples)
+data/*
+!data/sample-*.csv
+!data/.gitkeep
+*.parquet
+*.csv
+
+# Power BI files
+powerbi/dev/*.pbix
+powerbi/dev/*.pbix.tmp
+powerbi/**/*.pbix.recovery
+
+*.xlsx
+*.json
+!data/README.md
+
+# Logs
+*.log
+logs/
+spark-warehouse/
+
+# OS
+.DS_Store
+Thumbs.db
+.AppleDouble
+.LSOverride
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# IDE
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# SQL Server
+*.bak
+*.trn
+*.mdf
+*.ldf
+
+# Spark
+metastore_db/
+derby.log
+
+# Azure
+.azure/

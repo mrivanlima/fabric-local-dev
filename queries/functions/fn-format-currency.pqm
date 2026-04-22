@@ -1,0 +1,36 @@
+// Reusable Function: Format number as currency
+// Usage: fn-format-currency(1234.56) => "$1,234.56"
+
+let
+    // Function definition
+    FormatCurrency = (amount as number) as text =>
+        let
+            // Format with currency symbol and thousands separator
+            Formatted = Text.Format(
+                "$#,##0.00", 
+                {amount}
+            )
+        in
+            Formatted,
+    
+    // Function metadata
+    FunctionType = type function (
+        amount as number
+    ) as text meta [
+        Documentation.Name = "FormatCurrency",
+        Documentation.LongDescription = "Formats a number as USD currency with dollar sign and comma separators",
+        Documentation.Examples = {
+            [
+                Description = "Format 1234.56 as currency",
+                Code = "FormatCurrency(1234.56)",
+                Result = "$1,234.56"
+            ],
+            [
+                Description = "Format large number",
+                Code = "FormatCurrency(1299999.99)",
+                Result = "$1,299,999.99"
+            ]
+        }
+    ]
+in
+    Value.ReplaceType(FormatCurrency, FunctionType)

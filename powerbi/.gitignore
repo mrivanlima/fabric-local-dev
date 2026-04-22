@@ -1,0 +1,15 @@
+# Ignore Power BI Desktop files (.pbix) - they're large binary files with data
+*.pbix
+
+# Ignore backup files
+*.pbix.tmp
+*~$*.pbix
+
+# Ignore auto-recovered files
+*.pbix.recovery
+
+# Allow Power BI templates - these are smaller and don't contain data
+!*.pbit
+
+# Ignore Power BI cache
+.pbi/

@@ -1,0 +1,302 @@
+{
+  "folders": [
+    {
+      "name": "🏠 Fabric Local Dev (Root)",
+      "path": "."
+    },
+    {
+      "name": "📓 Notebooks",
+      "path": "notebooks"
+    },
+    {
+      "name": "🐍 Scripts & Helpers",
+      "path": "scripts"
+    },
+    {
+      "name": "📊 Data Files",
+      "path": "data"
+    },
+    {
+      "name": "🐳 Docker Configuration",
+      "path": "docker"
+    },
+    {
+      "name": "📚 Documentation",
+      "path": ".",
+      "uri": "file:///C:/Development/fabric-local-dev"
+    },
+    {
+      "name": "🔍 Power Query Files",
+      "path": "queries"
+    },
+    {
+      "name": "📊 Power BI",
+      "path": "powerbi"
+    }
+  ],
+  "settings": {
+    // Workspace-level settings
+    "files.exclude": {
+      "**/__pycache__": true,
+      "**/*.pyc": true,
+      "**/.ipynb_checkpoints": true,
+      "**/spark-warehouse": true,
+      "**/metastore_db": true
+    },
+    
+    // Python settings
+    "python.defaultInterpreterPath": "/usr/bin/python3",
+    "python.analysis.extraPaths": [
+      "${workspaceFolder}/scripts"
+    ],
+    "python.analysis.autoImportCompletions": true,
+    
+    // Jupyter settings
+    "jupyter.notebookFileRoot": "${workspaceFolder}/notebooks",
+    "jupyter.interactiveWindow.textEditor.executeSelection": true,
+    
+    // File associations
+    "files.associations": {
+      "*.ipynb": "jupyter-notebook",
+      "docker-compose*.yml": "yaml",
+      "Dockerfile*": "dockerfile",
+      "**/requirements*.txt": "pip-requirements",
+      "*.pq": "powerquery",
+      "*.pqm": "powerquery",
+      "*.m": "powerquery"
+    },
+    
+    // Editor settings
+    "editor.rulers": [88, 120],
+    "editor.formatOnSave": true,
+    "files.autoSave": "afterDelay",
+    "files.autoSaveDelay": 1000,
+    
+    // Markdown settings
+    "[markdown]": {
+      "editor.wordWrap": "on",
+      "editor.defaultFormatter": "yzhang.markdown-all-in-one"
+    },
+    
+    // Python settings
+    "[python]": {
+      "editor.defaultFormatter": "ms-python.black-formatter",
+      "editor.formatOnSave": true,
+      "editor.codeActionsOnSave": {
+        "source.organizeImports": true
+      }
+    },
+    
+    // YAML settings
+    "[yaml]": {
+      "editor.defaultFormatter": "redhat.vscode-yaml"
+    },
+    
+    // Power Query / M Language settings
+    "[powerquery]": {
+      "editor.defaultFormatter": "powerquery.vscode-powerquery-sdk",
+      "editor.formatOnSave": true,
+      "editor.tabSize": 2,
+      "editor.wordWrap": "on"
+    },
+    
+    // Terminal settings
+    "terminal.integrated.cwd": "${workspaceFolder}",
+    "terminal.integrated.defaultProfile.linux": "bash",
+    
+    // Git settings
+    "git.ignoreLimitWarning": true,
+    
+    // Search settings
+    "search.exclude": {
+      "**/__pycache__": true,
+      "**/.ipynb_checkpoints": true,
+      "**/spark-warehouse": true,
+      "**/metastore_db": true,
+      "**/*.parquet": true
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      // Core development
+      "ms-vscode-remote.remote-containers",
+      "ms-azuretools.vscode-docker",
+      
+      // Python & Data Science
+      "ms-python.python",
+      "ms-python.vscode-pylance",
+      "ms-toolsai.jupyter",
+      "ms-toolsai.datawrangler",
+      
+      // Database
+      "ms-mssql.mssql",
+      
+      // Documentation & Productivity
+      "yzhang.markdown-all-in-one",
+      "bierner.markdown-mermaid",
+      "eamodio.gitlens",
+      
+      // Code Quality
+      "ms-python.black-formatter",
+      "ms-python.pylint",
+      
+      // Power Query / M Language
+      "powerquery.vscode-powerquery-sdk",
+      "powerquery.vscode-powerquery",
+      
+      // Configuration files
+      "redhat.vscode-yaml",
+      "mechatroner.rainbow-csv"
+    ]
+  },
+  "launch": {
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "Python: Current File",
+        "type": "python",
+        "request": "launch",
+        "program": "${file}",
+        "console": "integratedTerminal",
+        "justMyCode": true,
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}/scripts"
+        }
+      },
+      {
+        "name": "Python: Debug Notebook",
+        "type": "python",
+        "request": "launch",
+        "module": "jupyter",
+        "args": [
+          "notebook",
+          "--no-browser",
+          "--port=8888"
+        ],
+        "console": "integratedTerminal"
+      }
+    ]
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "📂 Open in File Explorer",
+        "type": "shell",
+        "command": "explorer .",
+        "problemMatcher": [],
+        "group": "none"
+      },
+      {
+        "label": "🔗 Test Power BI Connection (Python)",
+        "type": "shell",
+        "command": "python",
+        "args": ["scripts/test_powerbi_connection.py"],
+        "problemMatcher": [],
+        "group": "test",
+        "presentation": {
+          "reveal": "always",
+          "panel": "new"
+        }
+      },
+      {
+        "label": "🔗 Test SQL Connection (Primary)",
+        "type": "shell",
+        "command": "docker",
+        "args": [
+          "exec",
+          "fabric-sqlserver",
+          "/opt/mssql-tools/bin/sqlcmd",
+          "-S", "localhost",
+          "-U", "sa",
+          "-P", "YourStrong@Passw0rd",
+          "-Q", "SELECT @@VERSION, DB_NAME()"
+        ],
+        "problemMatcher": [],
+        "group": "test"
+      },
+      {
+        "label": "🔗 Test SQL Connection (Secondary)",
+        "type": "shell",
+        "command": "docker",
+        "args": [
+          "exec",
+          "fabric-sqlserver2",
+          "/opt/mssql-tools/bin/sqlcmd",
+          "-S", "localhost",
+          "-U", "sa",
+          "-P", "YourStrong@Passw0rd",
+          "-Q", "SELECT @@VERSION, DB_NAME()"
+        ],
+        "problemMatcher": [],
+        "group": "test"
+      },
+      {
+        "label": "📖 Open Power Query Workflow Guide",
+        "type": "shell",
+        "command": "code",
+        "args": ["${workspaceFolder}/docs/POWERQUERY-WORKFLOW.md"],
+        "problemMatcher": [],
+        "group": "none"
+      },
+      {
+        "label": "📖 Open Power Query M Language Docs",
+        "type": "shell",
+        "command": "start",
+        "args": ["https://learn.microsoft.com/en-us/powerquery-m/"],
+        "problemMatcher": [],
+        "group": "none",
+        "windows": {
+          "command": "start",
+          "args": ["https://learn.microsoft.com/en-us/powerquery-m/"]
+        },
+        "linux": {
+          "command": "xdg-open",
+          "args": ["https://learn.microsoft.com/en-us/powerquery-m/"]
+        },
+        "osx": {
+          "command": "open",
+          "args": ["https://learn.microsoft.com/en-us/powerquery-m/"]
+        }
+      },
+      {
+        "label": "📊 Count Power Query Files",
+        "type": "shell",
+        "command": "bash",
+        "args": [
+          "-c",
+          "echo 'Power Query Files:' && find queries -name '*.pq' -o -name '*.pqm' | wc -l && echo 'Files found' && find queries -name '*.pq' -o -name '*.pqm'"
+        ],
+        "problemMatcher": [],
+        "group": "none",
+        "windows": {
+          "command": "powershell",
+          "args": [
+            "-Command",
+            "Write-Host 'Power Query Files:'; (Get-ChildItem -Path queries -Recurse -Include *.pq,*.pqm).Count; Get-ChildItem -Path queries -Recurse -Include *.pq,*.pqm | Select-Object -ExpandProperty FullName"
+          ]
+        }
+      },
+      {
+        "label": "🗄️ Create Secondary Database (FabricDev2)",
+        "type": "shell",
+        "command": "docker",
+        "args": [
+          "exec",
+          "fabric-sqlserver2",
+          "/opt/mssql-tools/bin/sqlcmd",
+          "-S", "localhost",
+          "-U", "sa",
+          "-P", "YourStrong@Passw0rd",
+          "-Q", "IF NOT EXISTS (SELECT 1 FROM sys.databases WHERE name = 'FabricDev2') CREATE DATABASE FabricDev2; SELECT name FROM sys.databases WHERE name = 'FabricDev2'"
+        ],
+        "problemMatcher": [],
+        "group": "none",
+        "presentation": {
+          "reveal": "always",
+          "panel": "shared"
+        }
+      }
+    ]
+  }
+}
