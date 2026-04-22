@@ -29,7 +29,7 @@ services:
       - fabric-network
     healthcheck:
       # Check if SQL Server is ready to accept connections
-      test: /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "YourStrong@Passw0rd" -Q "SELECT 1" || exit 1
+      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "YourStrong@Passw0rd" -C -Q "SELECT 1" || exit 1
       interval: 10s
       timeout: 3s
       retries: 10
@@ -54,7 +54,7 @@ services:
     networks:
       - fabric-network
     healthcheck:
-      test: /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "YourStrong@Passw0rd" -Q "SELECT 1" || exit 1
+      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "YourStrong@Passw0rd" -C -Q "SELECT 1" || exit 1
       interval: 10s
       timeout: 3s
       retries: 10
@@ -63,14 +63,10 @@ services:
   # Spark Master - Orchestrates Spark jobs (like Fabric's Spark engine)
   spark-master:
     build:
-      context: ./docker/spark
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: docker/spark/Dockerfile
     container_name: fabric-spark-master
-    environment:
-      # Tell this container to run as Spark master
-      - SPARK_MODE=master
-      - SPARK_MASTER_HOST=spark-master
-      - SPARK_MASTER_PORT=7077
+    command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.master.Master", "--host", "spark-master", "--port", "7077", "--webui-port", "8080"]
     ports:
       # Spark Master Web UI - view running jobs
       - "8080:8080"
@@ -88,38 +84,30 @@ services:
   # You can scale this to multiple workers for parallel processing
   spark-worker:
     build:
-      context: ./docker/spark
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: docker/spark/Dockerfile
     container_name: fabric-spark-worker
-    environment:
-      # Tell this container to run as Spark worker
-      - SPARK_MODE=worker
-      - SPARK_MASTER_URL=spark://spark-master:7077
-      # Allocate resources to this worker
-      - SPARK_WORKER_MEMORY=2G
-      - SPARK_WORKER_CORES=2
+    command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.worker.Worker", "spark://spark-master:7077", "--memory", "2G", "--cores", "2"]
     depends_on:
       - spark-master
     volumes:
       - ./notebooks:/opt/notebooks
       - ./data:/opt/data
       - ./scripts:/opt/scripts
-    netqlserver2:
-        condition: service_healthy
-      sworks:
+    networks:
       - fabric-network
 
   # Jupyter Notebook - Your interactive development environment
   # This is where you'll write and test PySpark code
   jupyter:
     build:
-      context: ./docker/spark
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: docker/spark/Dockerfile
     container_name: fabric-jupyter
     command: jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token='' --NotebookApp.password=''
     environment:
       # Configure Jupyter to connect to Spark master
-      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_MASTER=spark://spark-master:7077
       # SQL Server connection strings for PySpark
       - SQL_SERVER_HOST=sqlserver
       - SQL_SERVER_PORT=1433
@@ -144,13 +132,13 @@ services:
       - ./scripts:/opt/scripts
     working_dir: /opt/notebooks
     networks:
-      - fabrics for SQL Server data persistence
+      - fabric-network
+
+# Named volumes for SQL Server data persistence
 volumes:
   sqlserver-data:
     driver: local
-  sqlserver2ume for SQL Server data persistence
-volumes:
-  sqlserver-data:
+  sqlserver2-data:
     driver: local
 
 # Network so all containers can communicate

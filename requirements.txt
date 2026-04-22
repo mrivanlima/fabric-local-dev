@@ -1,11 +1,11 @@
 # Core Data Processing
 pyspark==3.5.0              # Apache Spark Python API - same engine Fabric uses
-pandas==2.1.4                # Data manipulation and analysis
-numpy==1.26.2                # Numerical computing
+pandas==2.0.3               # Data manipulation and analysis (compatible with Python 3.8)
+numpy==1.24.3               # Numerical computing (compatible with Python 3.8)
 
 # Jupyter & Interactive Development
 jupyterlab==4.0.9            # Interactive notebook interface
-ipython==8.18.1              # Enhanced Python shell
+ipython==8.12.3              # Enhanced Python shell (compatible with Python 3.8)
 ipywidgets==8.1.1            # Interactive widgets for notebooks
 
 # Database Connectivity
@@ -14,15 +14,15 @@ pymssql==2.2.11              # Python SQL Server connector
 sqlalchemy==2.0.23           # SQL toolkit and ORM
 
 # Data Visualization
-matplotlib==3.8.2            # Plotting library
-seaborn==0.13.0              # Statistical visualization
+matplotlib==3.7.2            # Plotting library (compatible with Python 3.8)
+seaborn==0.12.2              # Statistical visualization
 plotly==5.18.0               # Interactive plots
 
 # Data Format Support
 openpyxl==3.1.2              # Excel files
 xlrd==2.0.1                  # Legacy Excel support
-fastparquet==2023.10.1       # Parquet file format (columnar storage)
-pyarrow==14.0.1              # Arrow format (fast data interchange)
+fastparquet==2023.7.0        # Parquet file format (compatible with Python 3.8)
+pyarrow==12.0.1              # Arrow format (compatible with Python 3.8)
 
 # Utilities
 python-dotenv==1.0.0         # Environment variable management

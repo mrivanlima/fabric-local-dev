@@ -1,6 +1,6 @@
-# Start from official Spark image
+# Start from official Apache Spark image
 # This includes Java, Scala, and Apache Spark pre-configured
-FROM bitnami/spark:3.5.0
+FROM apache/spark:3.5.0
 
 # Switch to root to install packages
 USER root
@@ -20,7 +20,7 @@ RUN mkdir -p /opt/notebooks /opt/data /opt/scripts && \
     chmod -R 777 /opt/notebooks /opt/data /opt/scripts
 
 # Copy Python requirements and install dependencies
-COPY requirements.txt /tmp/requirements.txt
+COPY ./requirements.txt /tmp/requirements.txt
 RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
 
 # Install SQL Server ODBC driver for PySpark SQL Server connectivity
@@ -33,15 +33,15 @@ RUN curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - && \
 
 # Download SQL Server JDBC driver for Spark
 # Spark uses JDBC to connect to databases
-RUN curl -L https://go.microsoft.com/fwlink/?linkid=2223050 -o /opt/bitnami/spark/jars/mssql-jdbc-12.4.2.jre11.jar
+RUN curl -L https://go.microsoft.com/fwlink/?linkid=2223050 -o /opt/spark/jars/mssql-jdbc-12.4.2.jre11.jar
 
 # Set Python environment
-ENV PYTHONPATH=/opt/bitnami/spark/python:/opt/bitnami/spark/python/lib/py4j-0.10.9.7-src.zip:$PYTHONPATH
+ENV PYTHONPATH=/opt/spark/python:/opt/spark/python/lib/py4j-0.10.9.7-src.zip:$PYTHONPATH
 ENV PYSPARK_PYTHON=python3
 ENV PYSPARK_DRIVER_PYTHON=python3
 
 # Working directory for notebooks
 WORKDIR /opt/notebooks
 
-# Default command (can be overridden in docker-compose.yml)
-CMD ["/opt/bitnami/scripts/spark/run.sh"]
+# Default command - will be overridden by docker-compose for different services
+CMD ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.master.Master"]
