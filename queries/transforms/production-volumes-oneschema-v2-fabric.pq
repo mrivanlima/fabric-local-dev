@@ -1,52 +1,93 @@
+/**************************************************************************************
+QUERY NAME:
+    Pilzen Production Volume - OneSchema Transform
+
+PURPOSE:
+    Transform the original Pilzen Production Volume Excel file into the final
+    OneSchema import format.
+
+SOURCE:
+    SharePoint file:
+    https://digerati.sharepoint.com/sites/BusinessOps
+
+SOURCE FOLDER:
+    Shared Documents/Customer Data Information/Plzen/Production Scheduling/2026/
+
+SOURCE FILE:
+    Actuals March 2026.xlsx
+
+SOURCE SHEET:
+    Production Volumes
+
+FINAL OUTPUT COLUMNS:
+    1. ReportDate
+    2. Period Start
+    3. Period End
+    4. Product/Line Name
+    5. Product/Line ID
+    6. Volume Forecast
+    7. Volume Produced
+    8. Part Id
+    9. Part Description
+**************************************************************************************/
+
 let
     // ============================================================================
     // STEP 1: Load Excel File from SharePoint
+    // Purpose:
+    //     Connect to SharePoint instead of using a local file path.
     // ============================================================================
-    // TODO: Configure SharePoint connection before deploying to Microsoft Fabric
-    //
-    // INSTRUCTIONS:
-    // 1. Replace the placeholder connection below with your SharePoint details
-    // 2. Update the SharePoint site URL to your organization's site
-    // 3. Update the file name filter to match your Excel file
-    // 4. Ensure the file is uploaded to SharePoint document library
-    //
-    // EXAMPLE SharePoint connection pattern:
-    //
-    //   SharePointSource = SharePoint.Files(
-    //       "https://yourorg.sharepoint.com/sites/yoursite", 
-    //       [ApiVersion = 15]
-    //   ),
-    //   
-    //   FilteredFile = Table.SelectRows(
-    //       SharePointSource, 
-    //       each Text.Contains([Name], "Actuals-March-2026.xlsx")
-    //   ),
-    //   
-    //   FileContent = FilteredFile{0}[Content],
-    //   
-    //   Source = Excel.Workbook(FileContent, null, true),
-    //
-    // Once configured, replace the placeholder Source line below.
-    
-    // PLACEHOLDER: Replace this line after configuring SharePoint connection above
-    Source = #table(
-        {"Item", "Kind", "Data"}, 
-        {{"Production Volumes", "Sheet", #table({}, {})}}
+
+    SharePointSource = SharePoint.Files(
+        "https://digerati.sharepoint.com/sites/BusinessOps",
+        [ApiVersion = 15]
     ),
-    
-    ProductionVolumesSheet = Source{[Item="Production Volumes",Kind="Sheet"]}[Data],
-    
+
+    // Filter to the exact SharePoint folder.
+    FilteredToExactPlzenFolder = Table.SelectRows(
+        SharePointSource,
+        each [Folder Path] =
+            "https://digerati.sharepoint.com/sites/BusinessOps/Shared Documents/Customer Data Information/Plzen/Production Scheduling/2026/"
+    ),
+
+    // Filter to the exact workbook name.
+    FilteredToActualsWorkbook = Table.SelectRows(
+        FilteredToExactPlzenFolder,
+        each [Name] = "Actuals March 2026.xlsx"
+    ),
+
+    // Return a clear error if the file is not found.
+    FileContent =
+        if Table.RowCount(FilteredToActualsWorkbook) = 0 then
+            error "Source workbook was not found in the expected SharePoint folder."
+        else
+            FilteredToActualsWorkbook{0}[Content],
+
+    // Load the Excel workbook from the SharePoint binary content.
+    Source = Excel.Workbook(
+        FileContent,
+        null,
+        true
+    ),
+
     // ============================================================================
-    // STEP 2: Skip Title Rows and Promote Headers
+    // STEP 2: Select Source Sheet
+    // ============================================================================
+    ProductionVolumesSheet = Source{[Item="Production Volumes",Kind="Sheet"]}[Data],
+
+    // ============================================================================
+    // STEP 3: Skip Title Rows and Promote Headers
     // ============================================================================
     SkippedRows = Table.Skip(ProductionVolumesSheet, 3),
-    
+
     PromotedHeaders = Table.PromoteHeaders(
-        SkippedRows, 
+        SkippedRows,
         [PromoteAllScalars=true]
     ),
 
-    // Add row number so we can keep first Total complete vehicle dynamically
+    // ============================================================================
+    // STEP 4: Add Source Row Number
+    // ============================================================================
     AddedSourceRowNumber = Table.AddIndexColumn(
         PromotedHeaders,
         "SourceRowNumber",
@@ -54,28 +95,31 @@ let
         1,
         Int64.Type
     ),
-    
+
     // ============================================================================
-    // STEP 3: Fill Down Program Column
+    // STEP 5: Fill Down Program
     // ============================================================================
     FilledDownProgram = Table.FillDown(
-        AddedSourceRowNumber, 
+        AddedSourceRowNumber,
         {"Program"}
     ),
-    
+
     // ============================================================================
-    // STEP 4: Detect Valid Monthly Date Columns Dynamically
+    // STEP 6: Get Column Names and Define Identifier Columns
     // ============================================================================
     AllColumns = Table.ColumnNames(FilledDownProgram),
 
     IdentifierColumns = {
-        "Program", 
-        "Part Number", 
-        "SAP number", 
+        "Program",
+        "Part Number",
+        "SAP number",
         "Description",
         "SourceRowNumber"
     },
 
+    // ============================================================================
+    // STEP 7: Detect Valid Date Columns
+    // ============================================================================
     IsValidDateColumn = (columnName as text) as logical =>
         let
             ParsedDate = try Date.From(DateTime.From(columnName)) otherwise null,
@@ -84,10 +128,13 @@ let
             IsValid,
 
     ValidDateColumnsRaw = List.Select(
-        AllColumns, 
+        AllColumns,
         each IsValidDateColumn(_)
     ),
 
+    // ============================================================================
+    // STEP 8: Build Month Metadata
+    // ============================================================================
     MonthMetadataRaw =
         Table.FromRecords(
             List.Transform(
@@ -99,14 +146,15 @@ let
             )
         ),
 
-    // Sort months chronologically
     MonthMetadataSorted =
         Table.Sort(
             MonthMetadataRaw,
             {{"MonthStartDate", Order.Ascending}}
         ),
 
-    // Add expected previous month to validate chronological sequence
+    // ============================================================================
+    // STEP 9: Enforce Expected Monthly Sequence
+    // ============================================================================
     MonthMetadataWithIndex =
         Table.AddIndexColumn(
             MonthMetadataSorted,
@@ -124,7 +172,6 @@ let
             type date
         ),
 
-    // Keep only months that follow expected Jan 2025, Feb 2025, Mar 2025, etc.
     ValidMonthMetadata =
         Table.SelectRows(
             MonthMetadataWithExpected,
@@ -134,21 +181,24 @@ let
     ValidDateColumns =
         ValidMonthMetadata[MonthColumnName],
 
+    // ============================================================================
+    // STEP 10: Keep Only Needed Source Columns
+    // ============================================================================
     ColumnsToKeep = List.Combine(
         {
-            IdentifierColumns, 
+            IdentifierColumns,
             ValidDateColumns
         }
     ),
 
     SelectedValidColumns = Table.SelectColumns(
-        FilledDownProgram, 
+        FilledDownProgram,
         ColumnsToKeep,
         MissingField.Ignore
     ),
-    
+
     // ============================================================================
-    // STEP 5: Find First "Total complete vehicle" Row Dynamically
+    // STEP 11: Detect "Total complete vehicle"
     // ============================================================================
     ContainsTotalVehicleInRow = (rowRecord as record) as logical =>
         let
@@ -157,7 +207,10 @@ let
                 RowValues,
                 each Text.Lower(Text.Trim(Text.From(_)))
             ),
-            Result = List.Contains(CleanValues, "total complete vehicle")
+            Result = List.Contains(
+                CleanValues,
+                "total complete vehicle"
+            )
         in
             Result,
 
@@ -175,79 +228,79 @@ let
             1
         ),
 
-    // Remove all Total complete vehicle rows from part-level data
     FilteredData = Table.SelectRows(
         SelectedValidColumns,
         each not ContainsTotalVehicleInRow(_)
     ),
 
-    // Keep only valid part rows
+    // ============================================================================
+    // STEP 12: Keep Valid Part Detail Rows
+    // ============================================================================
     CleanedData = Table.SelectRows(
-        FilteredData, 
-        each 
+        FilteredData,
+        each
             [Program] <> null and Text.Trim(Text.From([Program])) <> "" and
             [#"Part Number"] <> null and Text.Trim(Text.From([#"Part Number"])) <> "" and
             [Description] <> null and Text.Trim(Text.From([Description])) <> ""
     ),
-    
+
     // ============================================================================
-    // STEP 6: Unpivot Monthly Columns for Part-Level Data
+    // STEP 13: Unpivot Monthly Columns
     // ============================================================================
     UnpivotedData = Table.Unpivot(
-        CleanedData, 
-        ValidDateColumns, 
-        "PeriodDate", 
+        CleanedData,
+        ValidDateColumns,
+        "PeriodDate",
         "Volume"
     ),
-    
+
     // ============================================================================
-    // STEP 7: Parse Dates
+    // STEP 14: Parse Period Date
     // ============================================================================
     ParsedDates = Table.TransformColumns(
         UnpivotedData,
         {{"PeriodDate", each Date.From(DateTime.From(_)), type date}}
     ),
-    
+
     // ============================================================================
-    // STEP 8: Add Period Start, Period End, and ReportDate
+    // STEP 15: Add Date Fields
     // ============================================================================
     AddedPeriodStart = Table.AddColumn(
-        ParsedDates, 
-        "Period Start", 
-        each Date.StartOfMonth([PeriodDate]), 
+        ParsedDates,
+        "Period Start",
+        each Date.StartOfMonth([PeriodDate]),
         type date
     ),
-    
+
     AddedPeriodEnd = Table.AddColumn(
-        AddedPeriodStart, 
-        "Period End", 
-        each Date.EndOfMonth([PeriodDate]), 
+        AddedPeriodStart,
+        "Period End",
+        each Date.EndOfMonth([PeriodDate]),
         type date
     ),
-    
+
     AddedReportDate = Table.AddColumn(
-        AddedPeriodEnd, 
-        "ReportDate", 
-        each null, 
+        AddedPeriodEnd,
+        "ReportDate",
+        each null,
         type nullable date
     ),
-    
+
     // ============================================================================
-    // STEP 9: Clean Volume Data
+    // STEP 16: Clean Volume Data
     // ============================================================================
     CleanedVolume = Table.TransformColumns(
         AddedReportDate,
         {{"Volume", each try Number.From(_) otherwise null, type nullable number}}
     ),
-    
-    // Keep zero volumes if they exist; only remove null volumes
+
     FilteredVolumes = Table.SelectRows(
-        CleanedVolume, 
+        CleanedVolume,
         each [Volume] <> null
     ),
-    
+
     // ============================================================================
-    // STEP 10: Map Part-Level Data to OneSchema
+    // STEP 17: Map Part-Level Data to OneSchema
     // ============================================================================
     RenamedColumns = Table.RenameColumns(
         FilteredVolumes,
@@ -259,31 +312,31 @@ let
         },
         MissingField.Ignore
     ),
-    
+
     RemovedExtraColumns = Table.RemoveColumns(
-        RenamedColumns, 
+        RenamedColumns,
         {"SAP number", "PeriodDate", "SourceRowNumber"},
         MissingField.Ignore
     ),
-    
+
     AddedProductLineID = Table.AddColumn(
         RemovedExtraColumns,
         "Product/Line ID",
         each null,
         type nullable text
     ),
-    
+
     AddedVolumeForecast = Table.AddColumn(
-        AddedProductLineID, 
-        "Volume Forecast", 
-        each null, 
+        AddedProductLineID,
+        "Volume Forecast",
+        each null,
         type nullable number
     ),
-    
+
     // ============================================================================
-    // STEP 11: Process First Total Complete Vehicle Row
+    // STEP 18: Process First Total Complete Vehicle Row
     // ============================================================================
-    TotalVehicleUnpivoted = 
+    TotalVehicleUnpivoted =
         if Table.RowCount(FirstTotalVehicleRow) > 0 then
             let
                 Unpivoted = Table.Unpivot(
@@ -392,19 +445,19 @@ let
                 },
                 {}
             ),
-    
+
     // ============================================================================
-    // STEP 12: Combine Part-Level and Total Vehicle Data
+    // STEP 19: Combine Final Rows
     // ============================================================================
     CombinedData = Table.Combine(
         {
-            AddedVolumeForecast, 
+            AddedVolumeForecast,
             TotalVehicleUnpivoted
         }
     ),
-    
+
     // ============================================================================
-    // STEP 13: Select and Order Final Columns
+    // STEP 20: Select Final Columns
     // ============================================================================
     FinalColumns = Table.SelectColumns(
         CombinedData,
@@ -421,9 +474,9 @@ let
         },
         MissingField.UseNull
     ),
-    
+
     // ============================================================================
-    // STEP 14: Set Final Column Types
+    // STEP 21: Set Final Types
     // ============================================================================
     TypedColumns = Table.TransformColumnTypes(
         FinalColumns,
@@ -439,9 +492,9 @@ let
             {"Part Description", type text}
         }
     ),
-    
+
     // ============================================================================
-    // STEP 15: Sort Final Output
+    // STEP 22: Sort Final Output
     // ============================================================================
     SortedRows = Table.Sort(
         TypedColumns,
@@ -451,5 +504,6 @@ let
             {"Part Id", Order.Ascending}
         }
     )
+
 in
     SortedRows
